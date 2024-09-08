@@ -1,6 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(not(doctest), doc = include_str!("../README.md"))]
-
 extern crate alloc;
 
 use alloc::{
@@ -584,20 +583,42 @@ impl From<Cow<'static, str>> for FastStr {
     }
 }
 
-seq!(N in 1..=27 {
-    #[derive(Clone)]
-    #[repr(u64)]
-    enum Repr {
-        Empty,
-        Bytes(Bytes),
-        ArcStr(Arc<str>),
-        ArcString(Arc<String>),
-        StaticStr(&'static str),
-        #(
-            Inline~N([u8; N]),
-        )*
-    }
-});
+#[derive(Clone)]
+#[repr(u64)]
+enum Repr {
+    Empty,
+    Bytes(Bytes),
+    ArcStr(Arc<str>),
+    ArcString(Arc<String>),
+    StaticStr(&'static str),
+    Inline1([u8; 8]),
+    Inline2([u8; 8]),
+    Inline3([u8; 8]),
+    Inline4([u8; 8]),
+    Inline5([u8; 8]),
+    Inline6([u8; 8]),
+    Inline7([u8; 8]),
+    Inline8([u8; 8]),
+    Inline9([u8; 16]),
+    Inline10([u8; 16]),
+    Inline11([u8; 16]),
+    Inline12([u8; 16]),
+    Inline13([u8; 16]),
+    Inline14([u8; 16]),
+    Inline15([u8; 16]),
+    Inline16([u8; 16]),
+    Inline17([u8; 32]),
+    Inline18([u8; 32]),
+    Inline19([u8; 32]),
+    Inline20([u8; 32]),
+    Inline21([u8; 32]),
+    Inline22([u8; 32]),
+    Inline23([u8; 32]),
+    Inline24([u8; 32]),
+    Inline25([u8; 32]),
+    Inline26([u8; 32]),
+    Inline27([u8; 32]),
+}
 
 impl Repr {
     #[inline]
@@ -632,13 +653,35 @@ impl Repr {
     ///
     /// The length of `s` must be <= `INLINE_CAP`.
     unsafe fn new_inline_impl(s: &str) -> Self {
-        seq!(N in 1..=27 {
+        seq!(N in 5..=27 {
             match s.len() {
                 0 => Self::Empty,
+                1 => {
+                    let mut buf = [0u8; 8];
+                    core::ptr::copy_nonoverlapping(s.as_ptr(), buf.as_mut_ptr(), 8);
+                    Self::Inline1(buf)
+                }
+                2 => {
+                    let mut buf = [0u8; 8];
+                    core::ptr::copy_nonoverlapping(s.as_ptr(), buf.as_mut_ptr(), 8);
+                    Self::Inline2(buf)
+                }
+                3 => {
+                    let mut buf = [0u8; 8];
+                    core::ptr::copy_nonoverlapping(s.as_ptr(), buf.as_mut_ptr(), 8);
+                    Self::Inline3(buf)
+                }
+                4 => {
+                    let mut buf = [0u8; 8];
+                    core::ptr::copy_nonoverlapping(s.as_ptr(), buf.as_mut_ptr(), 8);
+                    Self::Inline4(buf)
+                }
                 #(
                 N => {
-                    let mut buf = [0u8; N];
-                    core::ptr::copy_nonoverlapping(s.as_ptr(), buf.as_mut_ptr(), N);
+                    const SIZE: usize = (N as u64).next_power_of_two() as usize;
+
+                    let mut buf = [0u8; SIZE];
+                    core::ptr::copy_nonoverlapping(s.as_ptr(), buf.as_mut_ptr(), SIZE);
                     Self::Inline~N(buf)
                 }
                 )*
@@ -804,7 +847,7 @@ impl Repr {
         );
 
         let sub_offset = sub_p - bytes_p;
-        seq!(N in 1..=27 {
+        seq!(N in 5..=27 {
             match self {
                 Repr::Empty => panic!("invalid slice ref, self is empty but subset is not"),
                 Repr::Bytes(b) => Self::Bytes(b.slice_ref(subset)),
@@ -817,9 +860,30 @@ impl Repr {
                 Repr::StaticStr(s) => Self::StaticStr(unsafe {
                     core::str::from_utf8_unchecked(&s.as_bytes()[sub_offset..sub_offset + sub_len])
                 }),
+                Repr::Inline1(buf) => {
+                    let mut new_buf = [0; 8];
+                    new_buf[..sub_len].copy_from_slice(&buf[sub_offset..sub_offset + sub_len]);
+                    Self::Inline1(new_buf)
+                },
+                Repr::Inline2(buf) => {
+                    let mut new_buf = [0; 8];
+                    new_buf[..sub_len].copy_from_slice(&buf[sub_offset..sub_offset + sub_len]);
+                    Self::Inline2(new_buf)
+                },
+                Repr::Inline3(buf) => {
+                    let mut new_buf = [0; 8];
+                    new_buf[..sub_len].copy_from_slice(&buf[sub_offset..sub_offset + sub_len]);
+                    Self::Inline3(new_buf)
+                },
+                Repr::Inline4(buf) => {
+                    let mut new_buf = [0; 8];
+                    new_buf[..sub_len].copy_from_slice(&buf[sub_offset..sub_offset + sub_len]);
+                    Self::Inline4(new_buf)
+                },
                 #(
                     Repr::Inline~N(buf) => {
-                        let mut new_buf = [0; N];
+                        const SIZE: usize = (N as u64).next_power_of_two() as usize;
+                        let mut new_buf = [0; SIZE];
                         new_buf[..sub_len].copy_from_slice(&buf[sub_offset..sub_offset + sub_len]);
                         Self::Inline~N(new_buf)
                     }
